@@ -25,6 +25,7 @@ import re
 import urllib.parse
 
 DEFAULT_PORT = 80 # Use if port is not explicitly given
+DEFAULT_PATH = "/" # Use if path is not explicitly given
 
 def help():
     print("httpclient.py [GET/POST] [URL]\n")
@@ -35,41 +36,53 @@ class HTTPResponse(object):
         self.body = body
 
 class HTTPClient(object):
-    def get_host_port(self,url):
-        # Check if port is explictly written
-        # Check for host; return host and port
+    # Return host, port, path of given url
+    def get_host_port_path(self,url):
+        # Parse url, get host/port/path
+        parsed = urllib.parse.urlparse(url)
+        host = parsed.hostname
+        port = parsed.port
+        path = parsed.path
 
-        #TODO: Clarify if host = www.google.com OR www.google.com/path
-        #TODO: what about if host = [::1]?
-        # Assuming every url starts with scheme://
-        host_port = url.split("/")[2].split(":") # Get host:port
-        host = host_port[0]
-
-        if ":" in host_port:
-            port = re.findall('', url)
-        else:
+        # Use default port or path if not given
+        if port == None:
             port = DEFAULT_PORT
-
-        return host, port
+        if path == "":
+            path = DEFAULT_PATH
+        
+        return host, port, path
 
     def connect(self, host, port):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # Open socket using IPv4 and TCP
         self.socket.connect((host, port))
         return None
 
+    # Return response code
     def get_code(self, data):
-        # TODO: Code = body?
-        return None
+        # Get first line of response, then code
+        status_line = data.split("\r\n\r\n")[0].split("\r\n")[0]
+        code = status_line.split(" ")[1]
+        return int(code)
 
+    # Returns headers in a dictionary
     def get_headers(self,data):
-        # TODO: Do headers need to be stored in dict?
-        headers = data.split("\r\n\r\n")[0]
+        headers = {}
+
+        # Response code and headers together, separated by line
+        code_headers = data.split("\r\n\r\n")[0].split("\r\n")
+        
+        # Headers separated into key/value pairs
+        for i in range(1, len(code_headers)):
+            header = code_headers[i].split(": ")
+            key, value = header[0], header[1]
+            headers[key] = value
+
         return headers
 
+    # Return body of response, only if it exists
     def get_body(self, data):
-        # TODO: Body = after headers?
         info = data.split("\r\n\r\n")
-        body = None
+        body = ""
         if len(info) > 1:
             body = info[1]
         return body
@@ -96,22 +109,19 @@ class HTTPClient(object):
         code = 500
         body = ""
 
-        host, port = self.get_host_port(url)
-        request = "GET \ HTTP/1.1\nHost: " + host + "\n\n"
+        host, port, path = self.get_host_port_path(url)
+        request = "GET " + path + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n"
 
         self.connect(host, port) # Connect to server
         self.sendall(request) # Send request to server
 
-        self.socket.shutdown(socket.SHUT_WR) # Tell server socket is done sending!
+        response = self.recvall(self.socket)
+        print(response) # User story 5
 
-        data = self.recvall(self.socket)
-        #print(data) # User story 5
+        self.close()
 
-        print(self.get_headers(data))
-
-        self.socket.close()
-
-
+        code = self.get_code(response)
+        body = self.get_body(response)
 
         return HTTPResponse(code, body)
 
