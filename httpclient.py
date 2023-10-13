@@ -22,6 +22,8 @@ import sys
 import socket
 import re
 # you may use urllib to encode data appropriately
+# Used https://docs.python.org/3/library/urllib.parse.html as a 
+# reference for using urllib in encoding data and parsing URLs
 import urllib.parse
 
 DEFAULT_PORT = 80 # Use if port is not explicitly given
@@ -106,12 +108,19 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
+        # Used client.py from Lab 2 (TCP Proxy) as reference for this function.
         code = 500
         body = ""
 
+        # Form GET request to send to server
         host, port, path = self.get_host_port_path(url)
         request = "GET " + path + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n"
 
+        # If args are present, turn into proper string for query string and add to path
+        if args != None:
+            query = "?" + urllib.parse.urlencode(args)
+            path += query
+        
         self.connect(host, port) # Connect to server
         self.sendall(request) # Send request to server
 
@@ -136,7 +145,7 @@ class HTTPClient(object):
             content = urllib.parse.urlencode(args)
             content_length = len(content.encode("utf-8"))
         
-        # Form POST request to server
+        # Form POST request to send to server
         host, port, path = self.get_host_port_path(url)
         request = (f"POST {path} HTTP/1.1\r\n" 
                    + f"Host: {host}:{port}\r\n"
@@ -150,6 +159,8 @@ class HTTPClient(object):
 
         response = self.recvall(self.socket)
         print(response) # User story 5
+
+        self.close()
 
         code = self.get_code(response)
         body = self.get_body(response)
