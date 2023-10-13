@@ -128,6 +128,32 @@ class HTTPClient(object):
     def POST(self, url, args=None):
         code = 500
         body = ""
+
+        # If args are present, turn into proper string for the request body and update Content-Length
+        content = ""
+        content_length = 0
+        if args != None:
+            content = urllib.parse.urlencode(args)
+            content_length = len(content.encode("utf-8"))
+        
+        # Form POST request to server
+        host, port, path = self.get_host_port_path(url)
+        request = (f"POST {path} HTTP/1.1\r\n" 
+                   + f"Host: {host}:{port}\r\n"
+                   + "Connection: close\r\n"
+                   + "Content-Type: application/x-www-form-urlencoded\r\n"
+                   + f"Content-Length: {content_length}\r\n\r\n"
+                   + content)
+
+        self.connect(host, port) # Connect to server
+        self.sendall(request) # Send request to server
+
+        response = self.recvall(self.socket)
+        print(response) # User story 5
+
+        code = self.get_code(response)
+        body = self.get_body(response)
+
         return HTTPResponse(code, body)
 
     def command(self, url, command="GET", args=None):
