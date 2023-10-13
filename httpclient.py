@@ -38,7 +38,7 @@ class HTTPClient(object):
     def get_host_port(self,url):
         # Check if port is explictly written
         # Check for host; return host and port
-        # (^\/\/|^@)?[a-zA-Z0-9.]+(^:|^\/)? to isolate parts of url
+
         #TODO: Clarify if host = www.google.com OR www.google.com/path
         #TODO: what about if host = [::1]?
         # Assuming every url starts with scheme://
@@ -58,6 +58,7 @@ class HTTPClient(object):
         return None
 
     def get_code(self, data):
+        # TODO: Code = body?
         return None
 
     def get_headers(self,data):
@@ -95,9 +96,9 @@ class HTTPClient(object):
         code = 500
         body = ""
 
+        host, port = self.get_host_port(url)
         request = "GET \ HTTP/1.1\nHost: " + host + "\n\n"
 
-        host, port = self.get_host_port(url)
         self.connect(host, port) # Connect to server
         self.sendall(request) # Send request to server
 
